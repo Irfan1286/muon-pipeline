@@ -1,8 +1,8 @@
-import numpy as np
+import numpy as np  # type: ignore
 import pandas as pd
 import os
 
-def generate_muon_data(num_rows: int = 100000, output_path: str = "data/dummy_data.csv"):
+def generate_muon_data(num_rows: int = 100000, output_path: str = "output/dummy_data.csv"):
     """
     Generates fake muon coordinate data mimicking a physics simulation.
     
