@@ -43,9 +43,20 @@ def extract_all_features(df: pd.DataFrame, batch_size: int = 10000, output_path:
     
     # Save to CSV if an output path was specified
     if output_path is not None:
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)    # type: ignore
         features.to_csv(output_path, index=False)
         print(f"Features successfully saved to: {output_path}")
     
     return features
 
+if __name__ == "__main__":
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    input_path = os.path.join(base_dir, "data", "dummy_data.csv")
+    output_path = os.path.join(base_dir, "data", "features.csv")
+    
+    if not os.path.exists(input_path):
+        print(f"Error: {input_path} not found. Run generator.py first.")
+    else:
+        print(f"Extracting features from {input_path}...")
+        df = pd.read_csv(input_path)
+        extract_all_features(df, output_path=output_path)

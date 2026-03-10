@@ -2,7 +2,7 @@ import numpy as np  # type: ignore
 import pandas as pd
 import os
 
-def generate_muon_data(num_rows: int = 100000, output_path: str = "output/dummy_data.csv"):
+def generate_muon_data(num_rows: int = 100000, output_path: str | None = None):
     """
     Generates fake muon coordinate data mimicking a physics simulation.
     
@@ -11,6 +11,8 @@ def generate_muon_data(num_rows: int = 100000, output_path: str = "output/dummy_
     - X_in, Y_in: Entry coordinates (Normal distribution around 0)
     - X_out, Y_out: Exit coordinates (Normal distribution with slight variance)
     """
+    if output_path is None:
+        output_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "dummy_data.csv")
     print(f"Generating {num_rows} rows of simulated muon data...")
     
     # 1. Generate Muon IDs

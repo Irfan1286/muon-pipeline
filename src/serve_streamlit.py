@@ -2,7 +2,16 @@ import streamlit as st  # type: ignore
 import pandas as pd
 import time
 import os
-from feature_extractor import extract_all_features
+import pickle
+import sys
+
+# Ensure we can import from utils
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from utils.feature_extractor import extract_all_features  # type: ignore
+
+# Base references
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FEATURES_PATH = os.path.join(BASE_DIR, "data", "features.csv")
 
 # --- Setup Dashboard Configuration ---
 st.set_page_config(
@@ -99,15 +108,25 @@ st.markdown("""
 
 
 def main():
+    # Ensure model loading
+    model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "api", "model.pkl")
+    model = None
+    if os.path.exists(model_path):
+        with open(model_path, 'rb') as f:
+            model = pickle.load(f)
+
     # Application Header
-    st.markdown('<h1 class="main-title">Muon Physics Pipeline ⚛️</h1>', unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #94A3B8; font-size: 1.1rem;'>Level 1 & 2: Upload simulation data to extract structural physics features natively within the dashboard.</p>", unsafe_allow_html=True)
+    st.markdown('<h1 class="main-title">Muon Physics Pipeline (Advanced) ⚛️</h1>', unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #94A3B8; font-size: 1.1rem;'>Level 1, 2 & 3: Upload simulation data to extract structural physics features natively and perform ML inference.</p>", unsafe_allow_html=True)
     
     # Sidebar Information
     with st.sidebar:
         st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/CERN_logo.svg/1200px-CERN_logo.svg.png", width=150)
         st.markdown("### 📊 Pipeline Status")
-        st.success("System Ready")
+        if model is not None:
+            st.success("System Ready & Model Loaded")
+        else:
+            st.warning("Model Missing - Train Model First")
         st.markdown("---")
         st.markdown("### 📋 Required Schema")
         st.markdown("""
@@ -186,15 +205,14 @@ def main():
                 if st.button("Calculate Core Mathematics & Save CSV", use_container_width=True):
                     with st.spinner("Executing statistical extraction..."):
                         try:
-                            data_path = 'data/features.csv'
                             # Feature Extraction natively saves to output_path
-                            extract_all_features(df, output_path=data_path)
+                            extract_all_features(df, output_path=FEATURES_PATH)
                             
                             st.session_state['features_extracted'] = True
                         except Exception as feat_e:
                             st.error(f"Failed feature extraction: {str(feat_e)}")
                 
-                if st.session_state.get('features_extracted', False) or os.path.exists('data/features.csv'):
+                if st.session_state.get('features_extracted', False) or os.path.exists(FEATURES_PATH):
                     st.success(f"Matrix condensed! Muon feature parameters accurately computed and saved to disk.")
                     st.markdown("---")
                     
@@ -204,7 +222,7 @@ def main():
                     if st.session_state.get('view_csv', False):
                         with st.spinner("Loading saved dataset..."):
                             try:
-                                features_df = pd.read_csv('data/features.csv')
+                                features_df = pd.read_csv(FEATURES_PATH)
                                 
                                 # Visualise new DataFrame
                                 st.markdown("### 📊 Extracted Feature Database (Loaded from CSV)")
@@ -218,7 +236,7 @@ def main():
                                 f3.metric("Broadest Tail Distribution", f"{features_df['Tail_Ratio'].max():.4f}")
                                 
                                 # Enable file download
-                                with open('data/features.csv', 'rb') as f:
+                                with open(FEATURES_PATH, 'rb') as f:
                                     st.download_button(
                                         label="💾 Download 'features.csv' for Level 3",
                                         data=f,
@@ -229,6 +247,37 @@ def main():
                                 st.error(f"Could not load the extracted CSV: {str(e)}")
                             
                 st.markdown('</div>', unsafe_allow_html=True)
+                
+                # --- LEVEL 3: ML Inference ---
+                if st.session_state.get('view_csv', False):
+                    st.markdown('<div class="glass-container">', unsafe_allow_html=True)
+                    st.markdown("## 🤖 Level 3: Machine Learning Inference")
+                    st.markdown("Run the XGBoost Classifier on the extracted statistical features to classify block composite.")
+                    
+                    if st.button("Run Diagnostics", use_container_width=True):
+                        st.session_state['run_model'] = True
+                        
+                    if st.session_state.get('run_model', False):
+                        if model is None:
+                            st.error("⚠️ XGBoost model (model.pkl) not found. Please train the model first.")
+                        else:
+                            try:
+                                features_df = pd.read_csv(FEATURES_PATH)
+                                X = features_df[['Variance', 'Kurtosis', 'Tail_Ratio']]
+                                predictions = model.predict(X)
+                                
+                                features_df['Prediction'] = ["LEAD" if p == 1 else "SAFE" for p in predictions]
+                                
+                                st.markdown("### 🎯 Inference Results by Batch")
+                                st.dataframe(features_df[['Batch_ID', 'Variance', 'Kurtosis', 'Tail_Ratio', 'Prediction']], use_container_width=True, hide_index=True)
+                                
+                                if 1 in predictions:
+                                    st.error("#### 🚨 **FINAL STATUS: LEAD DETECTED** 🚨")
+                                else:
+                                    st.success("#### ✅ **FINAL STATUS: BLOCK IS SAFE** ✅")
+                            except Exception as ml_e:
+                                st.error(f"Inference failed: {str(ml_e)}")
+                    st.markdown('</div>', unsafe_allow_html=True)
                 
             except Exception as e:
                 st.error(f"Failed to process file. Ensure it is a valid CSV. Error: {str(e)}")
