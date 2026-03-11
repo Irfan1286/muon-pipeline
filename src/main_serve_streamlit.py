@@ -41,14 +41,14 @@ def load_model():
     return None
 
 def main():
-    st.markdown('<h1 class="main-title">Scanner Output</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-title">CHECK LEAD BLOCK</h1>', unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: #94A3B8; font-size: 1.1rem; margin-bottom: 30px;'>Upload your scan data to determine block safety.</p>", unsafe_allow_html=True)
     
     model = load_model()
     if model is None:
         st.warning("⚠️ Model not found. Please train the model via the api script first.")
         
-    st.markdown('<div class="glass-container">', unsafe_allow_html=True)
+    # st.markdown('<div class="glass-container">', unsafe_allow_html=True)
     uploaded_file = st.file_uploader("Upload Muon Tracking CSV", type=['csv'])
     
     if uploaded_file is not None:
