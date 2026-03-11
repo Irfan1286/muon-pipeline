@@ -3,6 +3,32 @@ import pandas as pd # type: ignore
 from scipy.stats import kurtosis # type: ignore
 import os
 
+# ── Sort configuration ───────────────────────────────────────────────────────
+# Set to True  → sort Muon_ID lowest → highest (ascending)
+# Set to False → sort Muon_ID highest → lowest (descending)
+SORT_ASCENDING: bool = True
+
+def sort_and_overwrite(csv_path: str, ascending: bool = SORT_ASCENDING) -> pd.DataFrame:
+    """
+    Load *csv_path*, sort by Muon_ID (ascending if *ascending* is True,
+    descending otherwise), overwrite the original file, and return the
+    sorted DataFrame.
+    """
+    df = pd.read_csv(csv_path)
+
+    if 'Muon_ID' not in df.columns:
+        raise KeyError("[sort_and_overwrite] 'Muon_ID' column not found in the CSV.")
+
+    direction = "ascending" if ascending else "descending"
+    print(f"[INFO]  Sorting '{os.path.basename(csv_path)}' by Muon_ID ({direction})…")
+
+    df_sorted = df.sort_values('Muon_ID', ascending=ascending).reset_index(drop=True)
+    df_sorted.to_csv(csv_path, index=False)
+
+    print(f"[INFO]  Overwritten: {csv_path}")
+    return df_sorted
+
+
 def tail_ratio(angles, threshold: float = 15.0):
     """Calculate the ratio of angles that exceed the given threshold."""
     if len(angles) == 0:
@@ -50,13 +76,16 @@ def extract_all_features(df: pd.DataFrame, batch_size: int = 10000, output_path:
     return features
 
 if __name__ == "__main__":
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     input_path = os.path.join(base_dir, "data", "dummy_data.csv")
     output_path = os.path.join(base_dir, "data", "features.csv")
     
     if not os.path.exists(input_path):
         print(f"Error: {input_path} not found. Run generator.py first.")
     else:
-        print(f"Extracting features from {input_path}...")
-        df = pd.read_csv(input_path)
+        # ── Step 1: sort dummy_data.csv by Muon_ID and overwrite it ──────────
+        df = sort_and_overwrite(input_path, ascending=SORT_ASCENDING)
+
+        # ── Step 2: extract features from the now-sorted data ────────────────
+        print(f"\n[INFO]  Extracting features from sorted data…")
         extract_all_features(df, output_path=output_path)
